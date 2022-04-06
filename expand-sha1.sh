@@ -1,6 +1,6 @@
-#!/usr/bin/sh
+#!/bin/sh
 
-# fixes-tag.sh
+# expand-sha1.sh
 #
 # sourced in commit-msg hook replaces all the occurrence
 # of:
@@ -15,7 +15,7 @@
 # line.
 # Note: ^Z is the control character "substitute" (\x1a)
 #       it can be easily inserted with:
-#         - emacs: C-q 032
+#         - emacs: C-q C-z or C-q 032
 #         - vim (in insert mode): Ctrl-Z
 #
 # Mostly useful for "Fixes:" tag
@@ -23,7 +23,7 @@
 
 print_hook() {
 	echo -n "[${hook_name:-commit-msg} hook] "
-	echo $@
+	echo "$@"
 }
 
 confirm() {
@@ -31,7 +31,7 @@ confirm() {
 
 	print_hook -n "$1"
 
-	while read c; do
+	while read -r c; do
 		case $c in
 			Y|y)
 				break
@@ -61,7 +61,7 @@ f_path=$1
 
 [ -f "${f_path}.new" ] && rm -f ${f_path}.new
 
-while read line; do
+while IFS= read -r line; do
 	hash=
 	r_line=
 
@@ -72,11 +72,12 @@ while read line; do
 		continue
 	fi
 
+	ifs=$IFS
 	IFS=''
-	set -- $line
-
+	set -f -- $line
 	if [ $# -le 1 ]; then
 		echo "$line" >> ${f_path}.new
+		IFS=$ifs
 		continue
 	fi
 
@@ -89,9 +90,9 @@ while read line; do
 		expanded_hash=$(git show -s --abbrev=12 --format=format:'%h ("%s")' $hash)
 		r_line=${r_line}${expanded_hash}${f##$hash}
 	done
-	unset IFS
 
 	echo "$r_line" >> ${f_path}.new
+	IFS=$ifs
 done < $f_path
 
 
@@ -99,3 +100,5 @@ if ! diff -u --color $f_path ${f_path}.new; then
 	echo
 	confirm "Do you want to proceed with the replacement (y/N)? " && mv ${f_path}.new $f_path
 fi
+
+exit 0
